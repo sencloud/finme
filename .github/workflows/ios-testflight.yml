@@ -33,8 +33,11 @@ concurrency:
 jobs:
   build-and-upload:
     name: Build IPA and upload to TestFlight
-    # macos-latest 自带最新 Xcode (含 iOS 26 SDK),正是 Apple 当前要求的版本。
-    runs-on: macos-latest
+    # 关键: 必须显式指定 macos-26。
+    # 截至 2026-05, GitHub 的 macos-latest 仍滞后 Apple 几个月, 默认是 macos-15 + Xcode 16.4,
+    # 用它构建会被 App Store Connect 服务端拒绝, 报 "must be built with iOS 26 SDK or later"。
+    # macos-26 的镜像默认 Xcode 26.4.1, 自带 iOS 26 SDK, 是当前 Apple 强制要求的最低版本。
+    runs-on: macos-26
     timeout-minutes: 60
 
     defaults:
