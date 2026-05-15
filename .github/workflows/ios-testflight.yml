@@ -1,0 +1,139 @@
+# =============================================================================
+# iOS TestFlight 云端构建 + 上传 workflow
+#
+# 触发方式:
+#   1) 手动 (Actions 页面点 Run workflow) —— 最常用
+#   2) 给 commit 打形如 v0.1.0 / v0.1.1+2 的 tag 时自动触发
+#
+# 在 GitHub repo 的 Settings -> Secrets and variables -> Actions 必须配置:
+#   - BUILD_CERTIFICATE_BASE64   Apple Distribution 证书 .p12 文件的 base64 文本
+#   - P12_PASSWORD               导出 .p12 时设置的密码
+#   - KEYCHAIN_PASSWORD          临时 keychain 解锁密码 (随便填一个长随机串)
+#   - ASC_API_KEY_ID             App Store Connect API Key 的 Key ID
+#   - ASC_API_ISSUER_ID          App Store Connect API Key 的 Issuer ID (UUID)
+#   - ASC_API_KEY_BASE64         .p8 私钥文件的 base64 文本
+# =============================================================================
+
+name: iOS Build & TestFlight
+
+on:
+  # 手动触发,可在 Actions 页面点击 "Run workflow" 按钮。
+  workflow_dispatch:
+
+  # tag 形如 v0.1.0 时自动触发。后续打 tag 即可发布新版本。
+  push:
+    tags:
+      - "v*"
+
+# 防止并发跑两次造成 build number 冲突。
+concurrency:
+  group: ios-testflight-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build-and-upload:
+    name: Build IPA and upload to TestFlight
+    # macos-latest 自带最新 Xcode (含 iOS 26 SDK),正是 Apple 当前要求的版本。
+    runs-on: macos-latest
+    timeout-minutes: 60
+
+    defaults:
+      run:
+        # flutter_app 是子目录,所有命令默认进这里。
+        working-directory: flutter_app
+
+    steps:
+      # ---------------------------------------------------------------
+      # 1. 拉代码
+      # ---------------------------------------------------------------
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # ---------------------------------------------------------------
+      # 2. 安装 Flutter
+      #    fixed channel + 自动从 .metadata 读 SDK 版本; 也可以指定具体 version。
+      # ---------------------------------------------------------------
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          # 如果想锁定 Flutter 版本,把下一行 cache 改成 version: '3.41.9'
+          cache: true
+
+      - name: Print Flutter & Xcode versions
+        run: |
+          flutter --version
+          xcodebuild -version
+          xcode-select -p
+
+      # ---------------------------------------------------------------
+      # 3. 拉 Dart 包依赖
+      # ---------------------------------------------------------------
+      - name: Flutter pub get
+        run: flutter pub get
+
+      # ---------------------------------------------------------------
+      # 4. 导入 Apple Distribution 证书到一个临时 keychain
+      #    用社区维护的官方 action,会自动建临时 keychain、解锁、清理。
+      # ---------------------------------------------------------------
+      - name: Import code-signing certificate (.p12)
+        uses: apple-actions/import-codesign-certs@v3
+        with:
+          p12-file-base64: ${{ secrets.BUILD_CERTIFICATE_BASE64 }}
+          p12-password: ${{ secrets.P12_PASSWORD }}
+          keychain-password: ${{ secrets.KEYCHAIN_PASSWORD }}
+
+      # ---------------------------------------------------------------
+      # 5. 用 ASC API Key 自动从 Apple Developer 拉取 provisioning profile
+      #    profile 名必须和 ExportOptions.plist 里的一致: "Finme Chanlun App Store"
+      # ---------------------------------------------------------------
+      - name: Download provisioning profile
+        uses: apple-actions/download-provisioning-profiles@v3
+        with:
+          bundle-id: com.finme.chanlun
+          profile-type: IOS_APP_STORE
+          issuer-id: ${{ secrets.ASC_API_ISSUER_ID }}
+          api-key-id: ${{ secrets.ASC_API_KEY_ID }}
+          api-private-key: ${{ secrets.ASC_API_KEY_BASE64 }}
+
+      # ---------------------------------------------------------------
+      # 6. 构建 IPA (Release 模式,使用 Manual signing + ExportOptions.plist)
+      #    --build-number 用 GitHub Actions 自带的 run number 自动递增,避免上传冲突。
+      # ---------------------------------------------------------------
+      - name: Build IPA
+        run: |
+          flutter build ipa \
+            --release \
+            --export-options-plist=ios/ExportOptions.plist \
+            --build-number=${{ github.run_number }}
+
+      # ---------------------------------------------------------------
+      # 7. 列出产物便于排错
+      # ---------------------------------------------------------------
+      - name: Show IPA info
+        run: |
+          ls -la build/ios/ipa/
+          du -sh build/ios/ipa/*.ipa
+
+      # ---------------------------------------------------------------
+      # 8. 上传 IPA 到 TestFlight
+      # ---------------------------------------------------------------
+      - name: Upload to TestFlight
+        uses: apple-actions/upload-testflight-build@v3
+        with:
+          app-path: flutter_app/build/ios/ipa/finme_chanlun_app.ipa
+          issuer-id: ${{ secrets.ASC_API_ISSUER_ID }}
+          api-key-id: ${{ secrets.ASC_API_KEY_ID }}
+          api-private-key: ${{ secrets.ASC_API_KEY_BASE64 }}
+
+      # ---------------------------------------------------------------
+      # 9. 把 IPA 也作为 GitHub artifact 留存,方便事后下载分析
+      # ---------------------------------------------------------------
+      - name: Upload IPA artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: finme_chanlun_app-ipa-build${{ github.run_number }}
+          path: flutter_app/build/ios/ipa/*.ipa
+          if-no-files-found: warn
+          retention-days: 14

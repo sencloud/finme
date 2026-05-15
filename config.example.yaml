@@ -1,0 +1,100 @@
+ctp:
+  userid: ""
+  password: ""
+  brokerid: "7090"
+  md_address: "tcp://180.169.75.18:61213"
+  td_address: "tcp://180.169.75.18:61205"
+  appid: "client_fmz_1.0"
+  auth_code: ""
+
+tushare:
+  token: ""
+
+cache:
+  enabled: true
+  dir: "data_cache"
+
+watchlist:
+  # --- 农产品 ---
+  - prefix: C
+    exchange: DCE
+    name: 玉米
+  - prefix: M
+    exchange: DCE
+    name: 豆粕
+  - prefix: Y
+    exchange: DCE
+    name: 豆油
+  - prefix: P
+    exchange: DCE
+    name: 棕榈油
+  - prefix: OI
+    exchange: ZCE
+    name: 菜油
+  # --- 黑色 ---
+  - prefix: I
+    exchange: DCE
+    name: 铁矿石
+  - prefix: RB
+    exchange: SHFE
+    name: 螺纹钢
+  - prefix: HC
+    exchange: SHFE
+    name: 热卷
+  - prefix: J
+    exchange: DCE
+    name: 焦炭
+  - prefix: JM
+    exchange: DCE
+    name: 焦煤
+  # --- 化工 ---
+  - prefix: MA
+    exchange: ZCE
+    name: 甲醇
+  - prefix: TA
+    exchange: ZCE
+    name: PTA
+  - prefix: SA
+    exchange: ZCE
+    name: 纯碱
+  - prefix: FG
+    exchange: ZCE
+    name: 玻璃
+  - prefix: PP
+    exchange: DCE
+    name: 聚丙烯
+  - prefix: EG
+    exchange: DCE
+    name: 乙二醇
+  - prefix: L
+    exchange: DCE
+    name: 塑料
+  - prefix: BU
+    exchange: SHFE
+    name: 沥青
+
+strategy:
+  preset: balanced
+  entry_timeframe: "15m"
+  min_align_score: 25
+  stop_atr: 1.5
+  target_atr: 3.0
+  trail_atr: 1.0
+  max_hold_bars: 40
+  cooldown: 2
+
+auto_trade:
+  enabled: false
+  max_position_per_variety: 1
+  max_total_positions: 3
+  volume_per_signal: 1
+
+scan:
+  interval_minutes: 15
+  recent_bars: 5
+  require_finished: true
+  include_partial_types: false
+
+api:
+  host: "0.0.0.0"
+  port: 8080

@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ExportOptions.plist —— flutter build ipa 阶段的导出配置。
+  当 CODE_SIGN_STYLE 为 Manual 时,Apple 要求显式声明 signing 信息。
+  这份配置会被 GitHub Actions workflow 在 `flutter build ipa --export-options-plist` 时引用。
+-->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- 分发渠道:app-store 表示打包给 App Store / TestFlight。 -->
+    <key>method</key>
+    <string>app-store</string>
+
+    <!-- Apple Developer Team ID。务必和 project.pbxproj 中 DEVELOPMENT_TEAM 保持一致。 -->
+    <key>teamID</key>
+    <string>ET423E6YP2</string>
+
+    <!-- Manual 签名:由我们自己指定 provisioning profile,而不是让 Xcode 现场申请。
+         CI 环境(GitHub Actions runner)上 Xcode 没有登录 Apple ID,所以无法 Automatic。 -->
+    <key>signingStyle</key>
+    <string>manual</string>
+
+    <!-- 强制使用 Apple Distribution 类型证书签名。 -->
+    <key>signingCertificate</key>
+    <string>Apple Distribution</string>
+
+    <!-- 把 Bundle Identifier 映射到对应的 provisioning profile 名字。
+         "Finme Chanlun App Store" 这个名字必须和你在 Apple Developer Portal
+         创建 App Store distribution profile 时填的名字一字不差。 -->
+    <key>provisioningProfiles</key>
+    <dict>
+        <key>com.finme.chanlun</key>
+        <string>Finme Chanlun App Store</string>
+    </dict>
+
+    <!-- 上传 dSYM 调试符号到 App Store Connect,便于以后看崩溃报告。 -->
+    <key>uploadSymbols</key>
+    <true/>
+
+    <!-- bitcode 早就被 Apple 弃用,Xcode 14+ 默认关闭。这里显式关掉。 -->
+    <key>uploadBitcode</key>
+    <false/>
+
+    <!-- destination=export 表示只生成 IPA 到磁盘,不直接 upload。
+         我们用单独的步骤(apple-actions/upload-testflight-build)上传,流程更可控。 -->
+    <key>destination</key>
+    <string>export</string>
+</dict>
+</plist>

@@ -1,0 +1,43 @@
+# =============================================================================
+# finme_quant 项目根 .gitignore
+# 关键原则:绝不提交私钥、账号密码、运行日志、超大缓存文件。
+# =============================================================================
+
+# ---------- Python ----------
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.venv/
+venv/
+.python-version
+
+# ---------- 运行时产物 / 日志 ----------
+*.log
+*.pid
+finme_serve.log
+finme_serve.pid
+
+# ---------- 大体积本地缓存(599MB,绝不能上传) ----------
+data_cache/
+
+# ---------- 私密配置 ----------
+# 真实业务 / API 密钥的 yaml,改用 config.example.yaml 作为模板提交
+config.yaml
+config.yaml.bak
+.env
+.env.*
+secrets/
+
+# ---------- IDE / OS 元数据 ----------
+.DS_Store
+.idea/
+.vscode/
+*.iml
+
+# ---------- Apple 签名 / 证书相关(任何位置出现都禁止提交) ----------
+*.p8
+AuthKey_*.p8
+*.p12
+*.cer
+*.mobileprovision

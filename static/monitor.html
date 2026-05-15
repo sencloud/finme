@@ -1,0 +1,1425 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>期货实盘</title>
+<style>
+:root {
+  --bg-primary: #0a0e17;
+  --bg-secondary: #111827;
+  --bg-card: #1a2332;
+  --bg-card-hover: #1f2b3d;
+  --border: #2a3a50;
+  --text-primary: #e2e8f0;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+  --accent-blue: #3b82f6;
+  --accent-green: #10b981;
+  --accent-red: #ef4444;
+  --accent-amber: #f59e0b;
+  --accent-purple: #8b5cf6;
+  --long-bg: rgba(16, 185, 129, 0.08);
+  --short-bg: rgba(239, 68, 68, 0.08);
+  --untradeable-bg: rgba(245, 158, 11, 0.08);
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif;
+  background: var(--bg-primary); color: var(--text-primary); line-height: 1.6; min-height: 100vh;
+  overflow-x: hidden;
+}
+.container { max-width: 1480px; margin: 0 auto; padding: 20px; }
+
+header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 14px 24px; background: var(--bg-secondary); border: 1px solid var(--border);
+  border-radius: 12px; margin-bottom: 16px;
+}
+header h1 { font-size: 18px; font-weight: 600; display: flex; align-items: center; gap: 10px; }
+header h1::before { content: ""; display: inline-block; width: 6px; height: 22px; background: var(--accent-blue); border-radius: 3px; }
+.header-right { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; justify-content: flex-end; }
+.header-right label { font-size: 12px; color: var(--text-muted); }
+.header-right select {
+  background: var(--bg-card); border: 1px solid var(--border); color: var(--text-primary);
+  padding: 5px 10px; border-radius: 6px; font-size: 12px;
+}
+.btn {
+  padding: 7px 16px; border: none; border-radius: 7px; font-size: 12px;
+  font-weight: 500; cursor: pointer; transition: all 0.2s;
+  min-height: 34px;
+}
+.btn-primary { background: var(--accent-blue); color: #fff; }
+.btn-primary:hover { background: #2563eb; }
+.btn-primary:disabled { background: #374151; color: var(--text-muted); cursor: not-allowed; }
+.btn-outline { background: transparent; color: var(--accent-blue); border: 1px solid var(--accent-blue); }
+.btn-outline:hover { background: rgba(59,130,246,0.1); }
+
+.panels-row { display: grid; grid-template-columns: 1fr; gap: 14px; margin-bottom: 16px; }
+.panel {
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; padding: 16px 20px;
+}
+.panel-title {
+  font-size: 12px; font-weight: 600; color: var(--text-muted); text-transform: uppercase;
+  letter-spacing: 0.5px; margin-bottom: 10px; display: flex; align-items: center; gap: 8px;
+}
+.panel-title .dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; }
+.dot-green { background: var(--accent-green); }
+.dot-red { background: var(--accent-red); }
+.dot-amber { background: var(--accent-amber); }
+.dot-blue { background: var(--accent-blue); }
+
+.status-bar { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; margin-bottom: 16px; }
+.status-card {
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px;
+  padding: 14px 16px; display: flex; align-items: center; gap: 12px;
+}
+.status-icon {
+  width: 38px; height: 38px; border-radius: 9px; display: flex;
+  align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0;
+}
+.status-icon.green  { background: rgba(16,185,129,0.15); }
+.status-icon.red    { background: rgba(239,68,68,0.15); }
+.status-icon.blue   { background: rgba(59,130,246,0.15); }
+.status-icon.amber  { background: rgba(245,158,11,0.15); }
+.status-icon.purple { background: rgba(139,92,246,0.15); }
+.status-label { font-size: 11px; color: var(--text-muted); }
+.status-value { font-size: 17px; font-weight: 600; }
+
+.watchlist-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.wl-chip {
+  padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 500;
+  background: rgba(59,130,246,0.1); border: 1px solid rgba(59,130,246,0.2); color: var(--accent-blue);
+}
+
+.signal-overview {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(42,58,80,0.45);
+}
+.signal-overview-head {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 10px; margin-bottom: 10px;
+}
+.signal-overview-meta {
+  font-size: 11px; color: var(--text-muted);
+}
+.signal-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+}
+.signal-card {
+  background: rgba(17,24,39,0.55);
+  border: 1px solid rgba(42,58,80,0.55);
+  border-radius: 10px;
+  padding: 10px 12px;
+  min-height: 108px;
+  position: relative;
+}
+.signal-card.confirmed {
+  border-color: rgba(16,185,129,0.45);
+  box-shadow: inset 0 0 0 1px rgba(16,185,129,0.08);
+}
+.signal-card.provisional {
+  border-color: rgba(245,158,11,0.4);
+  box-shadow: inset 0 0 0 1px rgba(245,158,11,0.06);
+}
+.signal-card.empty {
+  border-color: rgba(100,116,139,0.3);
+}
+.signal-card-head {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 8px; margin-bottom: 8px;
+}
+.signal-card-name {
+  font-size: 12px; font-weight: 600; color: var(--text-primary);
+}
+.signal-card-body {
+  display: flex; flex-direction: column; gap: 5px;
+}
+.signal-main {
+  display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+}
+.signal-main-text {
+  font-size: 13px; font-weight: 600; color: var(--text-primary);
+}
+.signal-sub {
+  font-size: 11px; color: var(--text-secondary);
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+}
+.signal-sub strong {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+.signal-trend {
+  font-size: 10px; color: var(--text-muted);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.signal-price-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+.signal-price-box {
+  background: rgba(10,14,23,0.5);
+  border: 1px solid rgba(42,58,80,0.45);
+  border-radius: 8px;
+  padding: 6px 8px;
+}
+.signal-price-label {
+  font-size: 10px; color: var(--text-muted); margin-bottom: 2px;
+}
+.signal-price-value {
+  font-size: 12px; font-weight: 600; font-family: monospace; color: var(--text-primary);
+}
+.signal-price-box.sl .signal-price-value { color: var(--accent-red); }
+.signal-price-box.tp .signal-price-value { color: var(--accent-green); }
+.signal-meta-row {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 8px; flex-wrap: wrap;
+}
+.signal-age {
+  font-size: 10px; color: var(--text-muted);
+}
+.signal-focus-tag {
+  position: absolute;
+  top: 8px; right: 8px;
+  font-size: 10px; font-weight: 700;
+  color: var(--accent-amber);
+  background: rgba(245,158,11,0.12);
+  border: 1px solid rgba(245,158,11,0.22);
+  border-radius: 999px;
+  padding: 1px 6px;
+}
+.signal-empty {
+  color: var(--text-muted); font-size: 12px;
+}
+
+.acct-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 8px; }
+.acct-item { display: flex; flex-direction: column; gap: 1px; }
+.acct-label { font-size: 10px; color: var(--text-muted); text-transform: uppercase; }
+.acct-val { font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; }
+
+.data-table { width: 100%; font-size: 12px; border-collapse: collapse; }
+.data-table th {
+  text-align: left; font-size: 10px; color: var(--text-muted); text-transform: uppercase;
+  letter-spacing: 0.5px; padding: 6px 8px; border-bottom: 1px solid var(--border);
+  position: sticky; top: 0; background: var(--bg-card); white-space: nowrap;
+}
+.data-table td {
+  padding: 8px 8px; border-bottom: 1px solid rgba(42,58,80,0.4);
+  font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+.data-table tbody tr { transition: background 0.15s; }
+.data-table tbody tr:hover { background: var(--bg-card-hover); }
+
+.live-info { display: flex; gap: 20px; flex-wrap: wrap; font-size: 12px; color: var(--text-secondary); }
+.live-info span { display: flex; align-items: center; gap: 4px; }
+.status-popover {
+  position: relative;
+}
+.status-tag {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 6px 12px; border-radius: 999px;
+  border: 1px solid transparent;
+  background: rgba(59,130,246,0.12); color: var(--accent-blue);
+  font-size: 12px; font-weight: 600; cursor: pointer;
+  transition: all 0.2s;
+  min-height: 34px;
+}
+.status-tag:hover {
+  filter: brightness(1.08);
+}
+.status-tag.ok {
+  background: rgba(16,185,129,0.12);
+  color: var(--accent-green);
+  border-color: rgba(16,185,129,0.22);
+}
+.status-tag.warn {
+  background: rgba(245,158,11,0.12);
+  color: var(--accent-amber);
+  border-color: rgba(245,158,11,0.22);
+}
+.status-tag.danger {
+  background: rgba(239,68,68,0.12);
+  color: var(--accent-red);
+  border-color: rgba(239,68,68,0.22);
+}
+.status-tag.neutral {
+  background: rgba(59,130,246,0.12);
+  color: var(--accent-blue);
+  border-color: rgba(59,130,246,0.22);
+}
+.status-tag-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 0 4px color-mix(in srgb, currentColor 16%, transparent);
+}
+.status-popover-card {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  width: min(520px, calc(100vw - 32px));
+  padding: 16px 18px;
+  border-radius: 12px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  box-shadow: 0 14px 36px rgba(0,0,0,0.38);
+  display: none;
+  z-index: 120;
+}
+.status-popover-card.live-overview-card {
+  position: fixed;
+  top: 80px;
+  left: 50%;
+  right: auto;
+  transform: translateX(-50%);
+  width: min(960px, calc(100vw - 32px));
+  max-height: min(78vh, 720px);
+  overflow: auto;
+}
+.status-popover-card.live-overview-card .status-bar { margin-bottom: 0; }
+.status-popover-card.live-overview-card .panels-row { margin-bottom: 14px; }
+.status-popover-card.live-overview-card .panel {
+  background: transparent; border: none; padding: 0;
+}
+.live-mode-tag {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 12px; border-radius: 999px;
+  background: rgba(16,185,129,0.15); color: var(--accent-green);
+  border: 1px solid rgba(16,185,129,0.3);
+  font-size: 11px; font-weight: 600; cursor: pointer;
+  min-height: 34px; transition: filter 0.15s;
+}
+.live-mode-tag:hover { filter: brightness(1.1); }
+.live-mode-tag.stopped {
+  background: rgba(245,158,11,0.15); color: var(--accent-amber);
+  border-color: rgba(245,158,11,0.3);
+}
+.status-popover:not(.live-popover):hover .status-popover-card,
+.status-popover.open .status-popover-card {
+  display: block;
+}
+.status-popover-title {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 10px; margin-bottom: 12px;
+}
+.status-popover-close {
+  border: none; background: transparent; color: var(--text-muted);
+  cursor: pointer; font-size: 16px; line-height: 1;
+}
+.status-popover-close:hover {
+  color: var(--text-primary);
+}
+
+.tab-bar { display: flex; gap: 2px; margin-bottom: 14px; background: var(--bg-secondary); padding: 3px; border-radius: 9px; width: fit-content; max-width: 100%; overflow-x: auto; }
+.tab-btn {
+  padding: 7px 18px; border-radius: 7px; font-size: 12px; font-weight: 500;
+  cursor: pointer; border: none; background: transparent; color: var(--text-muted); transition: all 0.2s;
+  min-height: 34px; white-space: nowrap;
+}
+.tab-btn:hover { color: var(--text-primary); }
+.tab-btn.active { background: var(--accent-blue); color: #fff; }
+
+.filter-row { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; align-items: center; }
+.filter-chip {
+  padding: 5px 12px; border-radius: 18px; font-size: 11px; font-weight: 500; cursor: pointer;
+  border: 1px solid var(--border); background: var(--bg-card); color: var(--text-secondary); transition: all 0.2s;
+  min-height: 30px; display: inline-flex; align-items: center;
+}
+.filter-chip:hover { border-color: var(--accent-blue); color: var(--accent-blue); }
+.filter-chip.active { background: rgba(59,130,246,0.15); border-color: var(--accent-blue); color: var(--accent-blue); }
+
+.table-scroll {
+  overflow-x: auto; border-radius: 10px; background: var(--bg-card); border: 1px solid var(--border);
+  -webkit-overflow-scrolling: touch;
+}
+
+.badge-sm {
+  display: inline-block; padding: 1px 7px; border-radius: 4px; font-size: 10px; font-weight: 600;
+}
+.badge-long  { background: rgba(16,185,129,0.2); color: var(--accent-green); }
+.badge-short { background: rgba(239,68,68,0.2); color: var(--accent-red); }
+.badge-open  { background: rgba(59,130,246,0.2); color: var(--accent-blue); }
+.badge-sl    { background: rgba(239,68,68,0.2); color: var(--accent-red); }
+.badge-tp    { background: rgba(16,185,129,0.2); color: var(--accent-green); }
+.badge-trail { background: rgba(139,92,246,0.2); color: var(--accent-purple); }
+.badge-counter { background: rgba(245,158,11,0.2); color: var(--accent-amber); }
+.badge-timeout { background: rgba(100,116,139,0.2); color: var(--text-secondary); }
+.badge-warn  { background: rgba(245,158,11,0.2); color: var(--accent-amber); }
+
+.pnl-pos { color: var(--accent-red); font-weight: 600; }
+.pnl-neg { color: var(--accent-green); font-weight: 600; }
+
+.spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--border); border-top: 2px solid var(--accent-blue); border-radius: 50%; animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.empty-state { text-align: center; padding: 50px 20px; color: var(--text-muted); }
+.empty-state .icon { font-size: 40px; margin-bottom: 12px; opacity: 0.5; }
+.empty-state p { font-size: 13px; }
+
+.live-dot { width: 7px; height: 7px; background: var(--accent-green); border-radius: 50%; display: inline-block; animation: pulse 2s ease-in-out infinite; }
+@keyframes pulse { 0%,100% { opacity:1; box-shadow: 0 0 0 0 rgba(16,185,129,0.4); } 50% { opacity:0.7; box-shadow: 0 0 0 5px rgba(16,185,129,0); } }
+
+.toast-container { position: fixed; top: 16px; right: 16px; z-index: 1000; display: flex; flex-direction: column; gap: 6px; }
+.toast { padding: 10px 18px; border-radius: 7px; font-size: 12px; animation: slideIn 0.3s ease-out; max-width: 340px; }
+.toast.success { background: rgba(16,185,129,0.9); color: #fff; }
+.toast.error   { background: rgba(239,68,68,0.9); color: #fff; }
+.toast.info    { background: rgba(59,130,246,0.9); color: #fff; }
+.toast.warning { background: rgba(245,158,11,0.9); color: #fff; }
+@keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+.trailing-indicator {
+  display: inline-flex; align-items: center; gap: 3px; font-size: 10px;
+  padding: 1px 5px; border-radius: 3px; background: rgba(139,92,246,0.15); color: var(--accent-purple);
+}
+
+@media (max-width: 900px) {
+  .container {
+    padding: 12px;
+    padding-left: max(12px, env(safe-area-inset-left));
+    padding-right: max(12px, env(safe-area-inset-right));
+  }
+  header { flex-direction: column; align-items: stretch; gap: 12px; padding: 14px; }
+  header h1 { justify-content: space-between; }
+  .header-right { justify-content: flex-start; gap: 8px; flex-wrap: wrap; }
+  .panels-row { grid-template-columns: 1fr; }
+  .status-bar { grid-template-columns: 1fr 1fr; }
+  .status-popover-card {
+    position: fixed;
+    top: 76px;
+    left: 16px;
+    right: 16px;
+    width: auto;
+    max-height: calc(100vh - 92px);
+    overflow: auto;
+  }
+  .status-popover-card.live-overview-card {
+    top: 76px;
+    left: 16px;
+    right: 16px;
+    transform: none;
+    width: auto;
+    max-height: calc(100vh - 92px);
+  }
+}
+
+@media (max-width: 640px) {
+  .container {
+    padding: 10px;
+    padding-left: max(10px, env(safe-area-inset-left));
+    padding-right: max(10px, env(safe-area-inset-right));
+    padding-bottom: max(10px, env(safe-area-inset-bottom));
+  }
+  header {
+    border-radius: 10px;
+    margin-bottom: 12px;
+    padding: 12px;
+    padding-top: max(12px, env(safe-area-inset-top));
+  }
+  header h1 { font-size: 17px; gap: 8px; }
+  .header-right {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    align-items: stretch;
+    gap: 8px;
+  }
+  .header-right > * { width: 100%; }
+  .header-right label {
+    display: block;
+    margin-bottom: 3px;
+    font-size: 10px;
+  }
+  .header-right select,
+  .status-tag {
+    min-height: 38px;
+  }
+  .header-right select {
+    width: 100%;
+  }
+  .status-popover { grid-column: span 1; }
+  #livePopover { grid-column: 1 / -1; }
+  #liveModeBadge,
+  .status-tag {
+    width: 100%;
+    justify-content: center;
+  }
+  .status-popover-card {
+    position: fixed;
+    top: max(12px, env(safe-area-inset-top));
+    left: 10px;
+    right: 10px;
+    bottom: max(12px, env(safe-area-inset-bottom));
+    width: auto;
+    max-height: none;
+    overflow: auto;
+    padding: 14px;
+  }
+  .status-popover-card.live-overview-card {
+    top: max(12px, env(safe-area-inset-top));
+    left: 10px;
+    right: 10px;
+    bottom: max(12px, env(safe-area-inset-bottom));
+    transform: none;
+    width: auto;
+    max-height: none;
+    padding: 14px;
+  }
+  .panel { padding: 14px; border-radius: 9px; }
+  .signal-overview-head {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .signal-grid { grid-template-columns: 1fr; gap: 8px; }
+  .signal-card { min-height: auto; padding: 10px; }
+  .signal-price-grid { grid-template-columns: 1fr 1fr 1fr; }
+  .status-bar { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .status-card { padding: 10px; gap: 8px; flex-direction: column; align-items: flex-start; text-align: left; }
+  .status-icon { width: 30px; height: 30px; border-radius: 8px; font-size: 14px !important; }
+  .status-label { font-size: 10px; }
+  .status-value { font-size: 16px; }
+  .tab-bar {
+    width: 100%;
+    scrollbar-width: none;
+  }
+  .tab-bar::-webkit-scrollbar,
+  .table-scroll::-webkit-scrollbar {
+    display: none;
+  }
+  .tab-btn {
+    flex: 1 0 auto;
+    padding: 8px 14px;
+  }
+  .filter-row {
+    gap: 6px;
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    padding-bottom: 2px;
+    -webkit-overflow-scrolling: touch;
+  }
+  .filter-chip {
+    flex: 0 0 auto;
+  }
+  .table-scroll {
+    margin-left: -4px;
+    margin-right: -4px;
+    border-radius: 8px;
+  }
+  .data-table {
+    min-width: 720px;
+    font-size: 11px;
+  }
+  .data-table th,
+  .data-table td {
+    padding: 7px 6px;
+  }
+  /* 首列在水平滚动时保持可见，便于在手机上对齐"品种 / 时间" */
+  .data-table th:first-child,
+  .data-table td:first-child {
+    position: sticky;
+    left: 0;
+    background: var(--bg-card);
+    z-index: 2;
+    box-shadow: 1px 0 0 0 var(--border);
+  }
+  .data-table tbody tr:hover td:first-child {
+    background: var(--bg-card-hover);
+  }
+  .toast-container {
+    top: 10px;
+    left: 10px;
+    right: 10px;
+  }
+  .toast {
+    max-width: none;
+    width: 100%;
+  }
+}
+
+@media (max-width: 420px) {
+  .header-right {
+    grid-template-columns: 1fr;
+  }
+  .status-popover,
+  .refresh-control {
+    grid-column: 1 / -1;
+  }
+  .status-bar { grid-template-columns: 1fr 1fr; }
+  .watchlist-chips {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    padding-bottom: 2px;
+    -webkit-overflow-scrolling: touch;
+  }
+  .wl-chip {
+    flex: 0 0 auto;
+  }
+  .signal-price-grid { grid-template-columns: 1fr 1fr; }
+}
+</style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <h1>期货实盘</h1>
+    <div class="header-right">
+      <div class="status-popover live-popover" id="livePopover" style="display:none;"
+           onmouseenter="showLivePopover()" onmouseleave="scheduleHideLivePopover()">
+        <button class="live-mode-tag" id="liveModeBadge"
+                type="button"
+                title="鼠标悬停或点击查看实盘概览"
+                onclick="toggleLivePopover(event)"
+                aria-expanded="false">
+          <span class="live-dot"></span>
+          <span id="liveModeText">实盘运行中</span>
+        </button>
+        <div class="status-popover-card live-overview-card" id="livePopoverCard"
+             onclick="event.stopPropagation()"
+             onmouseenter="showLivePopover()" onmouseleave="scheduleHideLivePopover()">
+          <div class="status-popover-title">
+            <div class="panel-title" style="margin-bottom:0;">
+              <span class="dot dot-blue"></span>实盘概览
+            </div>
+            <button class="status-popover-close" type="button" onclick="closeLivePopover()" aria-label="关闭">×</button>
+          </div>
+          <div class="panels-row">
+            <div class="panel">
+              <div class="panel-title"><span class="dot dot-blue"></span>监控品种</div>
+              <div class="watchlist-chips" id="watchlistChips">
+                <span style="color:var(--text-muted); font-size:12px;">加载中...</span>
+              </div>
+              <div class="signal-overview">
+                <div class="signal-overview-head">
+                  <div class="panel-title" style="margin-bottom:0;">
+                    实时信号总览
+                  </div>
+                  <div class="signal-overview-meta" id="signalOverviewMeta">等待信号数据...</div>
+                </div>
+                <div class="signal-grid" id="signalOverviewGrid">
+                  <div class="signal-empty">等待信号数据...</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="status-bar">
+            <div class="status-card">
+              <div class="status-icon green" style="font-size:16px;">&#9650;</div>
+              <div><div class="status-label">观察做多</div><div class="status-value" id="longCount">0</div></div>
+            </div>
+            <div class="status-card">
+              <div class="status-icon red" style="font-size:16px;">&#9660;</div>
+              <div><div class="status-label">观察做空</div><div class="status-value" id="shortCount">0</div></div>
+            </div>
+            <div class="status-card">
+              <div class="status-icon blue" style="font-size:16px;">&#128203;</div>
+              <div><div class="status-label">跟踪持仓</div><div class="status-value" id="activeTradeCount">0</div></div>
+            </div>
+            <div class="status-card">
+              <div class="status-icon purple" style="font-size:16px;">&#128200;</div>
+              <div><div class="status-label">已平仓</div><div class="status-value" id="closedTradeCount">0</div></div>
+            </div>
+            <div class="status-card">
+              <div class="status-icon amber" style="font-size:16px;">&#9888;</div>
+              <div><div class="status-label">待确认候选</div><div class="status-value" id="untradeableCount">0</div></div>
+            </div>
+            <div class="status-card">
+              <div class="status-icon blue" style="font-size:14px;">&#9889;</div>
+              <div><div class="status-label">状态迁移</div><div class="status-value" id="transitionCount">0</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="status-popover" id="ctpPopover">
+        <button class="status-tag neutral" id="ctpStatusTag" type="button" onclick="toggleCtpPopover(event)" aria-expanded="false">
+          <span class="status-tag-dot" id="ctpTagDot"></span>
+          <span id="ctpTagText">CTP检查中</span>
+        </button>
+        <div class="status-popover-card" id="ctpPopoverCard" onclick="event.stopPropagation()">
+          <div class="status-popover-title">
+            <div class="panel-title" style="margin-bottom:0;">
+              <span class="dot" id="ctpDot"></span><span id="ctpLabel">CTP状态明细</span>
+            </div>
+            <button class="status-popover-close" type="button" onclick="closeCtpPopover()" aria-label="关闭">×</button>
+          </div>
+          <div class="acct-grid" id="accountGrid">
+            <div class="acct-item"><span class="acct-label">状态</span><span class="acct-val" id="ctpPhase">--</span></div>
+            <div class="acct-item"><span class="acct-label">权益</span><span class="acct-val" id="acctBalance">--</span></div>
+            <div class="acct-item"><span class="acct-label">可用</span><span class="acct-val" id="acctAvailable">--</span></div>
+            <div class="acct-item"><span class="acct-label">冻结</span><span class="acct-val" id="acctFrozen">--</span></div>
+          </div>
+          <div style="margin-top:14px;">
+            <div class="panel-title"><span class="dot dot-amber"></span>扫描状态</div>
+            <div class="live-info" id="liveInfo"><span>--</span></div>
+          </div>
+          <div style="margin-top:14px;">
+            <div class="panel-title"><span class="dot dot-green"></span>CTP持仓</div>
+            <div id="positionsContainer" style="font-size:12px; color:var(--text-muted);">无持仓</div>
+          </div>
+        </div>
+      </div>
+      <div class="refresh-control">
+        <label>刷新</label>
+        <select id="refreshInterval">
+          <option value="0">暂停</option>
+          <option value="15">15秒</option>
+          <option value="30" selected>30秒</option>
+          <option value="60">1分钟</option>
+          <option value="300">5分钟</option>
+        </select>
+      </div>
+    </div>
+  </header>
+
+  <!-- Tab bar -->
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="switchTab('trades', this)">交易记录</button>
+    <button class="tab-btn" onclick="switchTab('signals', this)">观察信号</button>
+    <button class="tab-btn" onclick="switchTab('events', this)">历史信号</button>
+    <button class="tab-btn" onclick="switchTab('decisions', this)">状态迁移</button>
+  </div>
+
+  <!-- Tab: Trades (entry + exit lifecycle) -->
+  <div id="tabTrades">
+    <div class="table-scroll">
+      <table class="data-table" id="tradesTable">
+        <thead><tr>
+          <th>品种</th><th>合约</th><th>来源</th><th>方向</th><th>信号类型</th>
+          <th>入场时间</th><th>入场价</th><th>止损</th><th>止盈</th>
+          <th>出场时间</th><th>出场价</th><th>状态/出场原因</th>
+          <th>盈亏</th><th>持仓时长</th>
+          <th>评分</th><th>趋势</th>
+        </tr></thead>
+        <tbody id="tradesBody">
+          <tr><td colspan="16" style="text-align:center; padding:40px; color:var(--text-muted);">暂无交易记录 — 当前按策略引擎结果跟踪开平仓</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Tab: Signals (current candidates) -->
+  <div id="tabSignals" style="display:none;">
+    <div class="filter-row">
+      <span style="font-size:11px; color:var(--text-muted); margin-right:6px;">筛选:</span>
+      <span class="filter-chip active" onclick="setFilter('all', this)">全部</span>
+      <span class="filter-chip" onclick="setFilter('confirmed', this)">已确认</span>
+      <span class="filter-chip" onclick="setFilter('provisional', this)">待确认</span>
+      <span class="filter-chip" onclick="setFilter('long', this)">做多</span>
+      <span class="filter-chip" onclick="setFilter('short', this)">做空</span>
+      <span class="filter-chip" onclick="setFilter('high', this)">高信心</span>
+    </div>
+    <div style="margin-bottom:10px; padding:8px 12px; background:rgba(59,130,246,0.06); border:1px solid rgba(59,130,246,0.15); border-radius:7px; font-size:11px; color:var(--text-secondary);">
+      这里展示的是最新扫描得到的<strong style="color:var(--accent-blue);">观察信号</strong>。它们用于观察缠论结构和结构确认情况，但<strong style="color:var(--accent-green);">不直接等同于实盘入场</strong>。真实开平仓由策略引擎按最新 bar 统一判断。
+    </div>
+    <div class="table-scroll">
+      <table class="data-table" id="signalsTable">
+        <thead><tr>
+          <th>状态</th><th>来源</th><th>品种</th><th>合约</th><th>方向</th><th>信号类型</th>
+          <th>信号时间</th><th>入场价</th><th>止损</th><th>止盈</th>
+          <th>盈亏比</th><th>评分</th><th>V14</th><th>信心</th>
+          <th>趋势</th>
+        </tr></thead>
+        <tbody id="signalsBody">
+          <tr><td colspan="15" style="text-align:center; padding:40px; color:var(--text-muted);">等待信号数据...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Tab: Signal Events (persistent history) -->
+  <div id="tabEvents" style="display:none;">
+    <div style="margin-bottom:10px; padding:8px 12px; background:rgba(139,92,246,0.06); border:1px solid rgba(139,92,246,0.15); border-radius:7px; font-size:11px; color:var(--text-secondary);">
+      历史信号事件：每条确认信号在首次被检测时冻结保存，即使后续结构重算导致该点消失，此处记录不会被删除。
+    </div>
+    <div class="table-scroll">
+      <table class="data-table" id="eventsTable">
+        <thead><tr>
+          <th>品种</th><th>合约</th><th>方向</th><th>信号类型</th>
+          <th>信号时间</th><th>记录时间</th><th>入场价</th><th>止损</th><th>止盈</th>
+          <th>评分</th><th>V14</th><th>信心</th><th>趋势</th>
+        </tr></thead>
+        <tbody id="eventsBody">
+          <tr><td colspan="13" style="text-align:center; padding:40px; color:var(--text-muted);">暂无历史信号事件</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Tab: State transitions -->
+  <div id="tabDecisions" style="display:none;">
+    <div style="margin-bottom:10px; padding:8px 12px; background:rgba(245,158,11,0.06); border:1px solid rgba(245,158,11,0.15); border-radius:7px; font-size:11px; color:var(--text-secondary);">
+      状态迁移日志：记录策略引擎在新 bar 上产生的结果，如开仓、持仓更新、止损、止盈、超时平仓，以及对应的实盘委托状态。
+    </div>
+    <div class="table-scroll">
+      <table class="data-table" id="decisionsTable">
+        <thead><tr>
+          <th>时间</th><th>品种</th><th>方向</th><th>信号类型</th>
+          <th>事件</th><th>bar时间</th><th>实盘委托</th><th>原因</th>
+        </tr></thead>
+        <tbody id="decisionsBody">
+          <tr><td colspan="8" style="text-align:center; padding:40px; color:var(--text-muted);">暂无状态迁移记录</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+<div class="toast-container" id="toastContainer"></div>
+
+<script>
+const $ = id => document.getElementById(id);
+let allSignals = [];
+let allTrades = [];
+let allEvents = [];
+let watchlistItems = [];
+let currentFilter = 'all';
+let currentTab = 'trades';
+let refreshTimer = null;
+
+function toggleCtpPopover(event) {
+  event.stopPropagation();
+  closeLivePopover();
+  const popover = $('ctpPopover');
+  const expanded = popover.classList.toggle('open');
+  $('ctpStatusTag').setAttribute('aria-expanded', expanded ? 'true' : 'false');
+}
+
+function closeCtpPopover() {
+  const popover = $('ctpPopover');
+  if (!popover) return;
+  popover.classList.remove('open');
+  const tag = $('ctpStatusTag');
+  if (tag) tag.setAttribute('aria-expanded', 'false');
+}
+
+let _liveHoverTimer = null;
+function showLivePopover() {
+  clearTimeout(_liveHoverTimer);
+  closeCtpPopover();
+  const popover = $('livePopover');
+  if (!popover) return;
+  popover.classList.add('open');
+  const tag = $('liveModeBadge');
+  if (tag) tag.setAttribute('aria-expanded', 'true');
+}
+function scheduleHideLivePopover() {
+  clearTimeout(_liveHoverTimer);
+  _liveHoverTimer = setTimeout(closeLivePopover, 220);
+}
+function toggleLivePopover(event) {
+  event.stopPropagation();
+  closeCtpPopover();
+  const popover = $('livePopover');
+  if (!popover) return;
+  const expanded = popover.classList.toggle('open');
+  const tag = $('liveModeBadge');
+  if (tag) tag.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+}
+function closeLivePopover() {
+  clearTimeout(_liveHoverTimer);
+  const popover = $('livePopover');
+  if (!popover) return;
+  popover.classList.remove('open');
+  const tag = $('liveModeBadge');
+  if (tag) tag.setAttribute('aria-expanded', 'false');
+}
+
+document.addEventListener('click', () => {
+  closeCtpPopover();
+  closeLivePopover();
+});
+
+function setCtpTag(variant, text) {
+  const tag = $('ctpStatusTag');
+  tag.classList.remove('ok', 'warn', 'danger', 'neutral');
+  tag.classList.add(variant);
+  $('ctpTagText').textContent = text;
+}
+
+async function apiFetch(path, opts = {}) {
+  const resp = await fetch(path, { ...opts, signal: AbortSignal.timeout(15000) });
+  if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+  return resp.json();
+}
+
+// ── Tab switch ──
+function switchTab(tab, btn) {
+  currentTab = tab;
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  $('tabTrades').style.display = tab === 'trades' ? '' : 'none';
+  $('tabSignals').style.display = tab === 'signals' ? '' : 'none';
+  $('tabEvents').style.display = tab === 'events' ? '' : 'none';
+  $('tabDecisions').style.display = tab === 'decisions' ? '' : 'none';
+}
+
+// ── Status + Live state ──
+async function fetchStatus() {
+  try {
+    const data = await apiFetch('/api/status');
+    const ctp = data.ctp || {};
+    const live = data.live || {};
+    const isLive = data.live_mode;
+
+    const dot = $('ctpDot');
+    if (ctp.connected) {
+      dot.className = 'dot dot-green';
+      const phaseText = ctp.phase === 'ready' ? '已就绪' : (ctp.phase || '已连接');
+      $('ctpPhase').textContent = phaseText;
+      setCtpTag(ctp.phase === 'ready' ? 'ok' : 'warn', ctp.phase === 'ready' ? 'CTP正常' : `CTP${phaseText}`);
+    } else {
+      dot.className = 'dot dot-red';
+      const phaseText = isLive ? '未连接' : 'API模式';
+      $('ctpPhase').textContent = phaseText;
+      setCtpTag(isLive ? 'danger' : 'neutral', isLive ? 'CTP未连接' : 'API模式');
+    }
+
+    const popover = $('livePopover');
+    const badge = $('liveModeBadge');
+    const text = $('liveModeText');
+    if (popover) popover.style.display = isLive ? '' : 'none';
+    if (badge) {
+      badge.classList.toggle('stopped', !!isLive && !live.running);
+      if (text) text.textContent = (isLive && !live.running) ? '实盘已停止' : '实盘运行中';
+    }
+
+    const scanner = data.scanner || {};
+    let infoHtml = '';
+    if (scanner.scanning) {
+      infoHtml = `<span><span class="spinner"></span> 扫描中 ${scanner.currentPrefix} (${scanner.current}/${scanner.total})</span>`;
+    } else if (live.scan_count > 0) {
+      const ago = live.last_scan_at ? timeAgo(live.last_scan_at) : '--';
+      infoHtml = `<span>已扫描 ${live.scan_count} 轮</span><span>上次: ${ago}</span><span>观察信号: ${live.last_signal_count} 个</span>`;
+      if (data.signal_events_count) infoHtml += `<span>历史事件: ${data.signal_events_count}</span>`;
+      if (data.tracked_positions != null) infoHtml += `<span>策略持仓: ${data.tracked_positions}</span>`;
+      if (live.last_transition_count != null) infoHtml += `<span>本轮迁移: ${live.last_transition_count}</span>`;
+    } else if (isLive) {
+      infoHtml = '<span>等待首次扫描...</span>';
+    } else {
+      infoHtml = '<span>纯API模式 — 可手动扫描</span>';
+    }
+    if (live.errors && live.errors.length > 0) {
+      infoHtml += `<span style="color:var(--accent-red);">最近错误: ${esc(live.errors[live.errors.length-1])}</span>`;
+    }
+    $('liveInfo').innerHTML = infoHtml;
+
+    const transitionCnt = document.getElementById('transitionCount');
+    if (transitionCnt) transitionCnt.textContent = live.last_transition_count != null ? live.last_transition_count : '0';
+
+    if (ctp.account) {
+      $('acctBalance').textContent = fmtMoney(ctp.account.balance);
+      $('acctAvailable').textContent = fmtMoney(ctp.account.available);
+      $('acctFrozen').textContent = fmtMoney(ctp.account.frozen);
+    }
+
+    const positions = ctp.positions || [];
+    if (positions.length > 0) {
+      let html = '<table class="data-table"><tr><th>合约</th><th>方向</th><th>数量</th><th>开仓价</th><th>盈亏</th></tr>';
+      for (const p of positions) {
+        const dir = zhDir(p.direction);
+        const isLong = dir === '多';
+        const dc = isLong ? 'var(--accent-green)' : 'var(--accent-red)';
+        const pc = (p.pnl || 0) >= 0 ? 'var(--accent-red)' : 'var(--accent-green)';
+        html += `<tr><td>${p.symbol}</td><td style="color:${dc};">${dir}</td><td>${p.volume}</td><td>${fmtPrice(p.price)}</td><td style="color:${pc};">${fmtMoney(p.pnl)}</td></tr>`;
+      }
+      html += '</table>';
+      $('positionsContainer').innerHTML = html;
+    } else {
+      $('positionsContainer').innerHTML = '<span style="color:var(--text-muted); font-size:12px;">无持仓</span>';
+    }
+  } catch (e) {
+    $('ctpDot').className = 'dot dot-red';
+    $('ctpPhase').textContent = 'API离线';
+    setCtpTag('danger', 'API离线');
+    $('liveInfo').innerHTML = '<span style="color:var(--accent-red);">无法连接API服务</span>';
+  }
+}
+
+// ── Watchlist ──
+async function fetchWatchlist() {
+  try {
+    const data = await apiFetch('/api/watchlist');
+    const wl = data.watchlist || [];
+    watchlistItems = wl;
+    if (wl.length === 0) { $('watchlistChips').innerHTML = '<span style="color:var(--text-muted);">未配置监控品种</span>'; return; }
+    $('watchlistChips').innerHTML = wl.map(w =>
+      `<span class="wl-chip" title="${w.prefix}.${w.exchange}">${w.name || w.prefix}</span>`
+    ).join('') +
+    `<span style="font-size:11px; color:var(--text-muted); align-self:center; margin-left:6px;">` +
+    `${data.entry_timeframe || '15m'} · ${data.scan_interval_minutes || 15}分钟/轮 · ${data.strategy_preset || 'balanced'}</span>`;
+    renderSignalOverview();
+  } catch (e) {
+    $('watchlistChips').innerHTML = '<span style="color:var(--text-muted);">加载失败</span>';
+    watchlistItems = [];
+    renderSignalOverview();
+  }
+}
+
+// ── Trades (lifecycle) + Decisions ──
+async function fetchTrades() {
+  try {
+    const data = await apiFetch('/api/trades');
+    allTrades = data.trades || [];
+    $('activeTradeCount').textContent = (data.active || []).length;
+    $('closedTradeCount').textContent = (data.closed || []).length;
+    renderTrades();
+    renderDecisions(data.decisions || []);
+  } catch (e) { /* silent */ }
+}
+
+function renderTrades() {
+  const body = $('tradesBody');
+  if (allTrades.length === 0) {
+    body.innerHTML = '<tr><td colspan="16" style="text-align:center; padding:40px; color:var(--text-muted);">暂无交易记录 — 当前按策略引擎结果跟踪开平仓</td></tr>';
+    return;
+  }
+  body.innerHTML = allTrades.map(t => {
+    const isLong = t.direction === '做多';
+    const dirBadge = isLong ? 'badge-long' : 'badge-short';
+    const isOpen = !t.exitTime;
+
+    let exitReasonHtml = '';
+    if (isOpen) {
+      exitReasonHtml = `<span class="badge-sm badge-open">${esc(t.status || '持仓中')}</span>`;
+      if (t.isTrailing) exitReasonHtml += ` <span class="trailing-indicator">跟踪</span>`;
+    } else {
+      const rc = exitReasonClass(t.exitReason);
+      exitReasonHtml = `<span class="badge-sm ${rc}">${esc(t.exitReason || '已平仓')}</span>`;
+    }
+
+    let pnlHtml = '<span style="color:var(--text-muted);">--</span>';
+    if (t.pnl != null) {
+      const cls = t.pnl >= 0 ? 'pnl-pos' : 'pnl-neg';
+      const sign = t.pnl >= 0 ? '+' : '';
+      const detail = t.commission != null
+        ? `毛盈亏 ${fmtMoneySigned(t.grossPnl)}，手续费 ${fmtPnlAmount(t.commission)}`
+        : '净盈亏';
+      pnlHtml = `<span class="${cls}" title="${detail}">${sign}${fmtPnlAmount(t.pnl)}</span>`;
+    }
+
+    const holdStr = isOpen ? fmtMinutes(t.holdMinutes) : fmtMinutes(t.holdMinutes);
+    const sigLabel = SIG_LABELS[t.signalType] || t.signalType || '--';
+    const scoreHtml = [t.compositeScore, t.v14AlignScore != null ? `V14:${t.v14AlignScore}` : '']
+      .filter(Boolean).join(' ') || '--';
+
+    return `<tr${isOpen ? ' style="background:rgba(59,130,246,0.04);"' : ''}>
+      <td><strong>${esc(t.displayName || t.varietyCode || '--')}</strong></td>
+      <td style="font-size:11px;">${esc(t.contract || '--')}</td>
+      <td>${tradeSourceCell(t)}</td>
+      <td><span class="badge-sm ${dirBadge}">${t.direction}</span></td>
+      <td style="font-size:11px;">${esc(sigLabel)}</td>
+      <td>${fmtDateTime(t.entryTime)}</td>
+      <td style="font-family:monospace;">${fmtPrice(t.entryPrice)}</td>
+      <td style="font-family:monospace; color:var(--accent-red); font-size:11px;">${fmtPrice(t.stopLoss)}</td>
+      <td style="font-family:monospace; color:var(--accent-green); font-size:11px;">${fmtPrice(t.takeProfit)}</td>
+      <td>${t.exitTime ? fmtDateTime(t.exitTime) : '<span style="color:var(--text-muted);">--</span>'}</td>
+      <td style="font-family:monospace;">${t.exitPrice != null ? fmtPrice(t.exitPrice) : '<span style="color:var(--text-muted);">--</span>'}</td>
+      <td>${exitReasonHtml}</td>
+      <td>${pnlHtml}</td>
+      <td style="font-size:11px;">${holdStr}</td>
+      <td style="font-size:11px;">${scoreHtml}</td>
+      <td style="font-size:11px;">${esc(t.trendContext || '--')}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ── Decisions (signal accept/reject audit) ──
+function renderDecisions(decisions) {
+  const body = $('decisionsBody');
+  if (!decisions || decisions.length === 0) {
+    body.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:40px; color:var(--text-muted);">暂无状态迁移记录</td></tr>';
+    return;
+  }
+  const sorted = [...decisions].reverse();
+  body.innerHTML = sorted.map(d => {
+    const decisionDir = inferDecisionDirection(d);
+    const dirBadge = decisionDir === 'long' ? 'badge-long' : (decisionDir === 'short' ? 'badge-short' : 'badge-open');
+    const dirLabel = decisionDir === 'long'
+      ? '做多'
+      : (decisionDir === 'short' ? '做空' : (d.event === 'bootstrap_snapshot' ? '启动同步' : '--'));
+    const eventMap = {
+      bootstrap_snapshot: '启动同步',
+      entry_triggered: '开仓触发',
+      position_updated: '持仓更新',
+      exit_stop_loss: '止损平仓',
+      exit_take_profit: '止盈平仓',
+      exit_trailing: '跟踪止盈',
+      exit_timeout: '超时平仓',
+      exit_close: '平仓',
+    };
+    const eventLabel = eventMap[d.event] || d.event || '--';
+    const ls = d.liveStatus || 'tracking';
+    let liveBadge = '<span style="color:var(--text-muted);font-size:11px;">仅策略跟踪</span>';
+    if (ls === 'filled') liveBadge = '<span class="badge-sm badge-tp">已成交</span>';
+    else if (ls === 'part_traded') liveBadge = '<span class="badge-sm badge-warn">部分成交</span>';
+    else if (ls === 'submitted' || ls === 'pending') liveBadge = '<span class="badge-sm badge-open">已委托</span>';
+    else if (ls === 'cancelled') liveBadge = '<span class="badge-sm badge-warn">已撤单</span>';
+    else if (ls === 'rejected') liveBadge = '<span class="badge-sm badge-sl">委托被拒</span>';
+    else if (ls === 'failed') liveBadge = '<span class="badge-sm badge-sl">下单失败</span>';
+    else if (ls === 'skipped') liveBadge = '<span class="badge-sm badge-warn">无可平仓位</span>';
+    else if (ls === 'skipped_no_live_open') liveBadge = '<span style="color:var(--text-muted);font-size:11px;">未实盘开仓</span>';
+    else if (ls === 'disabled') liveBadge = '<span style="color:var(--text-muted);font-size:11px;">未开启自动下单</span>';
+    else if (ls === 'ctp_not_ready') liveBadge = '<span class="badge-sm badge-warn">CTP未就绪</span>';
+    else if (ls === 'bootstrap') liveBadge = '<span style="color:var(--text-muted);font-size:11px;">启动同步</span>';
+    const sigLabel = SIG_LABELS[d.signalType] || d.signalType || '--';
+    return `<tr>
+      <td style="font-size:11px;">${esc(d.time || '')}</td>
+      <td>${esc(d.displayName || d.varietyCode || '')}</td>
+      <td><span class="badge-sm ${dirBadge}">${dirLabel}</span></td>
+      <td style="font-size:11px;">${esc(sigLabel)}</td>
+      <td style="font-size:11px;">${esc(eventLabel)}</td>
+      <td style="font-size:11px;">${fmtDateTime(d.barTime || '')}</td>
+      <td>${liveBadge}</td>
+      <td style="font-size:11px; max-width:220px; word-break:break-all;">${esc(d.reason || '')}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ── Signals ──
+function signalSourceBadge(s) {
+  return `<span class="badge-sm" style="background:rgba(139,92,246,0.12);color:#c4b5fd;">缠论/观察</span>`;
+}
+
+function tradeSourceCell(t) {
+  return '<span style="color:#60a5fa;font-size:11px;">回测同构</span>';
+}
+
+async function fetchSignals() {
+  try {
+    const data = await apiFetch('/api/signals?limit=200');
+    allSignals = (data.signals || []).map(s => ({ ...s, source: s.source || 'chanlun' }))
+      .sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+    const confirmed = allSignals.filter(s => s.confirmed === true);
+    const provisional = allSignals.filter(s => s.confirmed !== true);
+    $('longCount').textContent = confirmed.filter(s => s.direction === 'long').length;
+    $('shortCount').textContent = confirmed.filter(s => s.direction === 'short').length;
+    $('untradeableCount').textContent = provisional.length;
+    renderSignalOverview();
+    renderSignals();
+  } catch (e) { /* silent */ }
+}
+
+function renderSignalOverview() {
+  const grid = $('signalOverviewGrid');
+  const meta = $('signalOverviewMeta');
+  if (!grid || !meta) return;
+
+  if (!watchlistItems.length) {
+    meta.textContent = '未配置监控品种';
+    grid.innerHTML = '<div class="signal-empty">请先配置监控品种</div>';
+    return;
+  }
+
+  const latestByVariety = new Map();
+  for (const signal of allSignals) {
+    const key = signal.varietyCode || '';
+    if (key && !latestByVariety.has(key)) latestByVariety.set(key, signal);
+  }
+
+  const confirmedCount = watchlistItems.filter(w => {
+    const s = latestByVariety.get(w.prefix);
+    return s && s.confirmed === true;
+  }).length;
+  const provisionalCount = watchlistItems.filter(w => {
+    const s = latestByVariety.get(w.prefix);
+    return s && s.confirmed !== true;
+  }).length;
+  meta.textContent = `监控 ${watchlistItems.length} 个 · 已确认 ${confirmedCount} · 待确认 ${provisionalCount}`;
+
+  const cards = watchlistItems.map(w => {
+    const s = latestByVariety.get(w.prefix);
+    const rank = signalPriority(s);
+    const sortTime = s?.date || '';
+    return { w, s, rank, sortTime };
+  }).sort((a, b) => {
+    if (b.rank !== a.rank) return b.rank - a.rank;
+    return (b.sortTime || '').localeCompare(a.sortTime || '');
+  });
+
+  grid.innerHTML = cards.map(({ w, s }) => {
+    if (!s) {
+      return `<div class="signal-card empty">
+        <div class="signal-card-head">
+          <div class="signal-card-name">${esc(w.name || w.prefix)}</div>
+          <span class="badge-sm" style="background:rgba(100,116,139,0.18); color:var(--text-secondary);">空窗</span>
+        </div>
+        <div class="signal-card-body">
+          <div class="signal-empty">当前扫描结果中没有最新信号</div>
+          <div class="signal-sub"><span>品种代码 ${esc(w.prefix)}</span></div>
+        </div>
+      </div>`;
+    }
+
+    const dir = s.direction === 'long' ? '做多' : '做空';
+    const dirCls = s.direction === 'long' ? 'badge-long' : 'badge-short';
+    const cardCls = s.confirmed === true ? 'signal-card confirmed' : 'signal-card provisional';
+    const statusBadge = s.confirmed === true
+      ? '<span class="badge-sm" style="background:rgba(16,185,129,0.15); color:var(--accent-green);">可跟踪</span>'
+      : '<span class="badge-sm badge-warn">待观察</span>';
+    const sigLabel = SIG_LABELS[s.type] || s.type || '--';
+    const score = s.compositeScore != null ? s.compositeScore : '--';
+    const v14 = s.v14AlignScore != null ? s.v14AlignScore : '--';
+    const confText = confidenceText(s.confidence);
+    const focusTag = signalPriority(s) >= 300 ? '<span class="signal-focus-tag">重点</span>' : '';
+    const rr = s.riskRewardRatio ? `${s.riskRewardRatio}:1` : '--';
+    const signalTime = fmtDateTime(s.date);
+    const signalAge = s.date ? timeAgo(s.date) : '--';
+
+    return `<div class="${cardCls}">
+      ${focusTag}
+      <div class="signal-card-head">
+        <div class="signal-card-name">${esc(s.displayName || w.name || w.prefix)}</div>
+        ${statusBadge}
+      </div>
+      <div class="signal-card-body">
+        <div class="signal-main">
+          <span class="badge-sm ${dirCls}">${dir}</span>
+          <span class="signal-main-text">${esc(sigLabel)}</span>
+        </div>
+        <div class="signal-meta-row">
+          <div class="signal-sub">
+            <span>评分 <strong>${score}</strong></span>
+            <span>V14 <strong>${v14}</strong></span>
+            <span>${confText}</span>
+          </div>
+          <div class="signal-age">${signalAge}</div>
+        </div>
+        <div class="signal-price-grid">
+          <div class="signal-price-box">
+            <div class="signal-price-label">参考入场</div>
+            <div class="signal-price-value">${fmtPrice(s.entryPrice || s.price)}</div>
+          </div>
+          <div class="signal-price-box sl">
+            <div class="signal-price-label">止损</div>
+            <div class="signal-price-value">${fmtPrice(s.stopLoss)}</div>
+          </div>
+          <div class="signal-price-box tp">
+            <div class="signal-price-label">止盈</div>
+            <div class="signal-price-value">${fmtPrice(s.takeProfit)}</div>
+          </div>
+        </div>
+        <div class="signal-sub">
+          <span>${signalTime}</span>
+          <span>盈亏比 ${rr}</span>
+        </div>
+        <div class="signal-trend" title="${esc(s.trendContext || '暂无趋势描述')}">${esc(s.trendContext || '暂无趋势描述')}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function fetchEvents() {
+  try {
+    const data = await apiFetch('/api/signals/events?limit=200');
+    allEvents = data.events || [];
+    renderEvents();
+  } catch (e) { /* silent */ }
+}
+
+function setFilter(filter, el) {
+  currentFilter = filter;
+  document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  renderSignals();
+}
+
+function filterSignals(signals) {
+  switch (currentFilter) {
+    case 'confirmed': return signals.filter(s => s.confirmed === true);
+    case 'provisional': return signals.filter(s => s.confirmed !== true);
+    case 'long': return signals.filter(s => s.direction === 'long');
+    case 'short': return signals.filter(s => s.direction === 'short');
+    case 'high': return signals.filter(s => s.confidence === 'high');
+    default: return signals;
+  }
+}
+
+function renderSignals() {
+  const body = $('signalsBody');
+  const filtered = filterSignals(allSignals);
+  if (filtered.length === 0) {
+    body.innerHTML = `<tr><td colspan="15" style="text-align:center; padding:40px; color:var(--text-muted);">${allSignals.length > 0 ? '当前筛选下无匹配信号' : '等待信号数据...'}</td></tr>`;
+    return;
+  }
+  body.innerHTML = filtered.map(s => {
+    const isLong = s.direction === 'long';
+    const dirLabel = isLong ? '做多' : '做空';
+    const dirBadge = isLong ? 'badge-long' : 'badge-short';
+    const sigLabel = SIG_LABELS[s.type] || s.type || '--';
+
+    const confMap = { high: ['高','conf-high'], medium: ['中','conf-medium'], low: ['低','conf-low'] };
+    const [confText, confCls] = confMap[s.confidence] || ['--',''];
+
+    const isConfirmed = s.confirmed === true;
+    const statusBadge = isConfirmed
+      ? '<span class="badge-sm" style="background:rgba(16,185,129,0.15); color:var(--accent-green);">已确认</span>'
+      : '<span class="badge-sm" style="background:rgba(245,158,11,0.15); color:var(--accent-amber);">待确认</span>';
+
+    return `<tr${!isConfirmed ? ' style="opacity:0.7;"' : ''}>
+      <td>${statusBadge}</td>
+      <td>${signalSourceBadge(s)}</td>
+      <td><strong>${esc(s.displayName || s.varietyCode || '--')}</strong></td>
+      <td style="font-size:11px;">${esc(s.executionTsCode || s.trendSeriesCode || '--')}</td>
+      <td><span class="badge-sm ${dirBadge}">${dirLabel}</span></td>
+      <td style="font-size:11px;">${sigLabel}</td>
+      <td>${fmtDateTime(s.date)}</td>
+      <td style="font-family:monospace;">${fmtPrice(s.entryPrice || s.price)}</td>
+      <td style="font-family:monospace; color:var(--accent-red);">${fmtPrice(s.stopLoss)}</td>
+      <td style="font-family:monospace; color:var(--accent-green);">${fmtPrice(s.takeProfit)}</td>
+      <td>${s.riskRewardRatio ? s.riskRewardRatio + ':1' : '--'}</td>
+      <td>${s.compositeScore || '--'}</td>
+      <td>${s.v14AlignScore != null ? s.v14AlignScore : '--'}</td>
+      <td><span class="badge-sm ${confCls}">${confText}</span></td>
+      <td style="font-size:11px;">${esc(s.trendContext || '--')}</td>
+    </tr>`;
+  }).join('');
+}
+
+function renderEvents() {
+  const body = $('eventsBody');
+  if (allEvents.length === 0) {
+    body.innerHTML = '<tr><td colspan="13" style="text-align:center; padding:40px; color:var(--text-muted);">暂无历史信号事件</td></tr>';
+    return;
+  }
+  body.innerHTML = allEvents.map(s => {
+    const isLong = s.direction === 'long';
+    const dirLabel = isLong ? '做多' : '做空';
+    const dirBadge = isLong ? 'badge-long' : 'badge-short';
+    const sigLabel = SIG_LABELS[s.type] || s.type || '--';
+    const confMap = { high: ['高','conf-high'], medium: ['中','conf-medium'], low: ['低','conf-low'] };
+    const [confText, confCls] = confMap[s.confidence] || ['--',''];
+    return `<tr>
+      <td><strong>${esc(s.displayName || s.varietyCode || '--')}</strong></td>
+      <td style="font-size:11px;">${esc(s.executionTsCode || s.trendSeriesCode || '--')}</td>
+      <td><span class="badge-sm ${dirBadge}">${dirLabel}</span></td>
+      <td style="font-size:11px;">${sigLabel}</td>
+      <td>${fmtDateTime(s.date)}</td>
+      <td style="font-size:10px; color:var(--text-muted);">${fmtDateTime(s.eventTime)}</td>
+      <td style="font-family:monospace;">${fmtPrice(s.entryPrice || s.price)}</td>
+      <td style="font-family:monospace; color:var(--accent-red);">${fmtPrice(s.stopLoss)}</td>
+      <td style="font-family:monospace; color:var(--accent-green);">${fmtPrice(s.takeProfit)}</td>
+      <td>${s.compositeScore || '--'}</td>
+      <td>${s.v14AlignScore != null ? s.v14AlignScore : '--'}</td>
+      <td><span class="badge-sm ${confCls}">${confText}</span></td>
+      <td style="font-size:11px;">${esc(s.trendContext || '--')}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ── Helpers ──
+const SIG_LABELS = {
+  buy1:'一买', buy2:'二买', buy3:'三买', sell1:'一卖', sell2:'二卖', sell3:'三卖',
+  semiBuy2:'类二买', semiBuy3:'类三买', semiSell2:'类二卖', semiSell3:'类三卖',
+  biReversalLong:'笔底反转', biReversalShort:'笔顶反转',
+  hubBounceLong:'中枢下沿反弹', hubBounceShort:'中枢上沿回落',
+  shadowLong:'长下影做多', shadowShort:'长上影做空',
+  exec_hub_breakout:'中枢突破', exec_bi_extreme:'笔极值突破', exec_hub_pullback:'中枢回踩',
+};
+
+function exitReasonClass(reason) {
+  if (!reason) return 'badge-open';
+  if (reason.includes('止损')) return 'badge-sl';
+  if (reason.includes('目标止盈')) return 'badge-tp';
+  if (reason.includes('跟踪止盈')) return 'badge-trail';
+  if (reason.includes('反向')) return 'badge-counter';
+  if (reason.includes('超时')) return 'badge-timeout';
+  return 'badge-open';
+}
+
+function zhDir(d) {
+  const m = { LONG:'多', Long:'多', long:'多', BUY:'多', Buy:'多', SHORT:'空', Short:'空', short:'空', SELL:'空', Sell:'空', NET:'净' };
+  return m[d] || d || '--';
+}
+
+function inferDecisionDirection(d) {
+  const rawDirection = String(d.direction || '').trim();
+  if (rawDirection === 'long' || rawDirection === 'short') return rawDirection;
+
+  const rawLabel = String(d.directionLabel || '').trim();
+  if (rawLabel.includes('做多') || rawLabel === '多') return 'long';
+  if (rawLabel.includes('做空') || rawLabel === '空') return 'short';
+
+  const signalType = String(d.signalType || '').trim();
+  if (!signalType) return '';
+  if (signalType.startsWith('buy') || signalType.startsWith('semiBuy') || signalType.endsWith('Long')) return 'long';
+  if (signalType.startsWith('sell') || signalType.startsWith('semiSell') || signalType.endsWith('Short')) return 'short';
+  return '';
+}
+function confidenceText(confidence) {
+  if (confidence === 'high') return '高信心';
+  if (confidence === 'medium') return '中信心';
+  if (confidence === 'low') return '低信心';
+  return '--';
+}
+function signalPriority(signal) {
+  if (!signal) return 0;
+  let score = signal.confirmed === true ? 200 : 100;
+  if (signal.confidence === 'high') score += 100;
+  else if (signal.confidence === 'medium') score += 60;
+  else if (signal.confidence === 'low') score += 20;
+  if (signal.direction === 'long' || signal.direction === 'short') score += 10;
+  if (signal.compositeScore != null) score += Math.min(Number(signal.compositeScore) || 0, 99) / 1000;
+  return score;
+}
+function fmtPrice(v) { return (v == null || v === 0) ? '--' : (typeof v === 'number' ? v.toFixed(2) : v); }
+function fmtMoney(v) { return (v == null) ? '--' : Number(v).toLocaleString('zh-CN', { maximumFractionDigits: 0 }); }
+function fmtPnlAmount(v) {
+  if (v == null) return '--';
+  return Number(v).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+function fmtMoneySigned(v) {
+  if (v == null) return '--';
+  const num = Number(v);
+  const sign = num >= 0 ? '+' : '';
+  return sign + fmtPnlAmount(num);
+}
+function fmtDateTime(d) {
+  if (!d) return '--';
+  if (d.length >= 16) return d.substring(5, 16).replace('T', ' ');
+  return d;
+}
+function fmtMinutes(m) {
+  if (!m && m !== 0) return '--';
+  if (m < 60) return m + '分钟';
+  const h = Math.floor(m / 60);
+  const r = m % 60;
+  return r > 0 ? `${h}小时${r}分` : `${h}小时`;
+}
+function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+function timeAgo(iso) {
+  const diff = (Date.now() - new Date(iso).getTime()) / 1000;
+  if (diff < 60) return `${Math.round(diff)}秒前`;
+  if (diff < 3600) return `${Math.round(diff/60)}分钟前`;
+  return `${Math.round(diff/3600)}小时前`;
+}
+
+function showToast(msg, type = 'info') {
+  const c = $('toastContainer'), t = document.createElement('div');
+  t.className = 'toast ' + type; t.textContent = msg; c.appendChild(t);
+  setTimeout(() => { t.style.opacity = '0'; t.style.transition = 'opacity 0.3s'; }, 3000);
+  setTimeout(() => t.remove(), 3500);
+}
+
+// ── Refresh ──
+function setupAutoRefresh() {
+  if (refreshTimer) clearInterval(refreshTimer);
+  const iv = parseInt($('refreshInterval').value);
+  if (iv > 0) refreshTimer = setInterval(refreshAll, iv * 1000);
+}
+$('refreshInterval').addEventListener('change', setupAutoRefresh);
+
+async function refreshAll() {
+  await Promise.all([fetchStatus(), fetchSignals(), fetchTrades(), fetchEvents()]);
+}
+
+(async function() {
+  setupAutoRefresh();
+  await fetchWatchlist();
+  await refreshAll();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,62 @@
+# Miscellaneous
+*.class
+*.log
+*.pyc
+*.swp
+.DS_Store
+.atom/
+.build/
+.buildlog/
+.history
+.svn/
+.swiftpm/
+migrate_working_dir/
+
+# IntelliJ related
+*.iml
+*.ipr
+*.iws
+.idea/
+
+# The .vscode folder contains launch configuration and tasks you configure in
+# VS Code which you may wish to be included in version control, so this line
+# is commented out by default.
+#.vscode/
+
+# Flutter/Dart/Pub related
+**/doc/api/
+**/ios/Flutter/.last_build_id
+.dart_tool/
+.flutter-plugins-dependencies
+.pub-cache/
+.pub/
+/build/
+/coverage/
+
+# Symbolication related
+app.*.symbols
+
+# Obfuscation related
+app.*.map.json
+
+# Android Studio will place build artifacts here
+/android/app/debug
+/android/app/profile
+/android/app/release
+
+# ============================================================
+# 安全:绝不能提交的私钥/证书/配置文件
+# ============================================================
+# Apple App Store Connect API Key (.p8) —— 一旦泄露任何人都能向你的账号上传 build
+*.p8
+AuthKey_*.p8
+# Apple Distribution 证书私钥 (.p12) —— 同样必须保密
+*.p12
+*.cer
+*.mobileprovision
+# Xcode 自动生成的本地用户配置
+ios/**/xcuserdata/
+ios/**/*.xcuserstate
+# CocoaPods 的本地缓存与下载内容(锁文件 Podfile.lock 是要提交的,Pods/ 不提交)
+ios/Pods/
+ios/.symlinks/
