@@ -73,6 +73,38 @@ jobs:
         run: flutter pub get
 
       # ---------------------------------------------------------------
+      # 3.5 把 base64 编码的 .p8 解码回 PKCS8 PEM 原文。
+      #     原因: apple-actions v3 的 api-private-key 输入要求是 PKCS8 PEM 原文
+      #     (含 -----BEGIN PRIVATE KEY----- 和 -----END PRIVATE KEY-----),
+      #     而我们把它存成 base64 是为了在 GitHub Secrets UI 里粘贴方便、避免换行问题。
+      # ---------------------------------------------------------------
+      - name: Decode App Store Connect API private key
+        id: decode_asc_key
+        shell: bash
+        # 这一步在 flutter_app 子目录或仓库根目录跑都行,显式回到根目录避免歧义。
+        working-directory: ${{ github.workspace }}
+        run: |
+          set -euo pipefail
+          KEY_PEM="$(printf '%s' '${{ secrets.ASC_API_KEY_BASE64 }}' | base64 -d 2>/dev/null || true)"
+          if [ -z "$KEY_PEM" ]; then
+            echo "::error::ASC_API_KEY_BASE64 解码失败,请检查 GitHub Secret 是否粘贴正确(必须是 .p8 文件 base64 后的字符串,不能含 BEGIN/END 标签)"
+            exit 1
+          fi
+          if ! printf '%s' "$KEY_PEM" | head -1 | grep -q "BEGIN PRIVATE KEY"; then
+            echo "::error::解码后的内容不是合法的 PKCS8 PEM (缺少 BEGIN PRIVATE KEY 头)"
+            exit 1
+          fi
+          # 把解码后的私钥也加到 mask 列表里,防止意外 echo 时泄露到日志。
+          echo "::add-mask::$KEY_PEM"
+          # 用 GITHUB_OUTPUT 的 heredoc 语法存多行字符串。
+          {
+            echo 'pem<<EOF_ASC_KEY'
+            printf '%s\n' "$KEY_PEM"
+            echo 'EOF_ASC_KEY'
+          } >> "$GITHUB_OUTPUT"
+          echo "ASC API Key 解码 OK"
+
+      # ---------------------------------------------------------------
       # 4. 导入 Apple Distribution 证书到一个临时 keychain
       #    用社区维护的官方 action,会自动建临时 keychain、解锁、清理。
       # ---------------------------------------------------------------
@@ -94,7 +126,7 @@ jobs:
           profile-type: IOS_APP_STORE
           issuer-id: ${{ secrets.ASC_API_ISSUER_ID }}
           api-key-id: ${{ secrets.ASC_API_KEY_ID }}
-          api-private-key: ${{ secrets.ASC_API_KEY_BASE64 }}
+          api-private-key: ${{ steps.decode_asc_key.outputs.pem }}
 
       # ---------------------------------------------------------------
       # 6. 构建 IPA (Release 模式,使用 Manual signing + ExportOptions.plist)
@@ -124,7 +156,8 @@ jobs:
           app-path: flutter_app/build/ios/ipa/finme_chanlun_app.ipa
           issuer-id: ${{ secrets.ASC_API_ISSUER_ID }}
           api-key-id: ${{ secrets.ASC_API_KEY_ID }}
-          api-private-key: ${{ secrets.ASC_API_KEY_BASE64 }}
+          # 同样使用解码后的 PEM 原文,而不是 base64
+          api-private-key: ${{ steps.decode_asc_key.outputs.pem }}
 
       # ---------------------------------------------------------------
       # 9. 把 IPA 也作为 GitHub artifact 留存,方便事后下载分析
