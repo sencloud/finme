@@ -8,6 +8,12 @@
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
 	<string>缠论看盘</string>
+	<!-- ITSAppUsesNonExemptEncryption=false 表示本 app 不使用任何非豁免加密。
+	     我们只通过系统 HTTPS/HTTP 调用后端 API,没有自己实现加密算法,
+	     所以可以声明 false。这样每次上传 TestFlight 后 ASC 不会再要求手动
+	     回答 Export Compliance 问询。 -->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<!-- 后端 API 当前为 http://www.singzquant.com，iOS 默认只允许 HTTPS。
