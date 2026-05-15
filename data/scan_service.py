@@ -159,11 +159,24 @@ class ScanService:
         self._last_results: dict | None = None
 
     async def scan_all(self, prefixes: list[str] | None = None,
-                       options: dict | None = None) -> dict:
-        return await asyncio.to_thread(self.scan_all_sync, prefixes, options)
+                       options: dict | None = None,
+                       watchlist: list[dict] | None = None) -> dict:
+        """异步包装。优先级:watchlist > prefixes > 全量期货品种(EXCHANGE_MAP)。"""
+        return await asyncio.to_thread(
+            self.scan_all_sync, prefixes, options, watchlist)
 
     def scan_all_sync(self, prefixes: list[str] | None = None,
-                      options: dict | None = None) -> dict:
+                      options: dict | None = None,
+                      watchlist: list[dict] | None = None) -> dict:
+        """同步扫描入口。
+
+        watchlist 是新加的 "全字段" 列表参数,每项形如
+        ``{"market": "futures"|"stock", "prefix": str, "exchange": str, "name": str}``。
+        当 watchlist 不为空时,优先按它扫描——这样前端可以传任意自定义品种(含股票)
+        而不依赖后端 config.yaml。
+
+        prefixes 兼容旧调用(纯期货前缀列表)。两者都不传则扫全量期货。
+        """
         if self._scanning:
             return {"error": "扫描正在进行中", "progress": self._progress}
 
@@ -173,13 +186,24 @@ class ScanService:
         all_signals: list[dict] = []
 
         try:
-            scan_prefixes = prefixes or list(EXCHANGE_MAP.keys())
-            self._progress = {"current": 0, "total": len(scan_prefixes), "currentPrefix": ""}
+            # 把所有入参统一成 watchlist 风格(含 market 字段)再分发,
+            # 这样下面的循环一份逻辑能处理期货 + 股票两种品种。
+            scan_items = self._normalize_to_watchlist(watchlist, prefixes)
+            self._progress = {
+                "current": 0,
+                "total": len(scan_items),
+                "currentPrefix": "",
+            }
 
-            for prefix in scan_prefixes:
+            for item in scan_items:
+                prefix = item.get("prefix") or ""
                 self._progress["currentPrefix"] = prefix
                 try:
-                    result = self._scan_variety(prefix, opts)
+                    market = (item.get("market") or "futures").lower()
+                    if market == "stock":
+                        result = self._scan_stock(item, opts)
+                    else:
+                        result = self._scan_variety(prefix, opts)
                     if result:
                         results.append(result)
                         if result.get("signals"):
@@ -201,12 +225,198 @@ class ScanService:
                 "results": results,
                 "signals": all_signals,
                 "scannedAt": datetime.now().isoformat(),
-                "varietyCount": len(scan_prefixes),
+                "varietyCount": len(scan_items),
                 "signalCount": len(all_signals),
             }
             return self._last_results
         finally:
             self._scanning = False
+
+    @staticmethod
+    def _normalize_to_watchlist(
+        watchlist: list[dict] | None,
+        prefixes: list[str] | None,
+    ) -> list[dict]:
+        """把多种入参形式归一成 watchlist 列表(每项含 market/prefix/exchange/name)。
+
+        - 显式传 watchlist: 原样返回(自动补 market 默认 futures)
+        - 仅传 prefixes:   按 EXCHANGE_MAP 推断 exchange,name 用 FUTURES_NAMES
+        - 都不传:           扫全量期货品种(用 EXCHANGE_MAP 的所有 prefix)
+        """
+        if watchlist:
+            normalized = []
+            for it in watchlist:
+                normalized.append({
+                    "market": (it.get("market") or "futures").lower(),
+                    "prefix": (it.get("prefix") or "").upper(),
+                    "exchange": (it.get("exchange") or "").upper(),
+                    "name": it.get("name") or "",
+                })
+            return normalized
+
+        prefix_list = prefixes or list(EXCHANGE_MAP.keys())
+        return [
+            {
+                "market": "futures",
+                "prefix": p,
+                "exchange": EXCHANGE_MAP.get(p, ""),
+                "name": FUTURES_NAMES.get(p, p),
+            }
+            for p in prefix_list
+        ]
+
+    # ------------------------------------------------------------------
+    # A 股扫描
+    # ------------------------------------------------------------------
+
+    def _scan_stock(self, item: dict, options: dict) -> dict | None:
+        """扫描单只 A 股。
+
+        item: ``{"prefix": "600519", "exchange": "SH", "name": "贵州茅台", ...}``
+        ts_code 拼接规则: ``{prefix}.{exchange}``,例如 ``600519.SH``、``000001.SZ``。
+        其余流程与期货一致——拉日/周/60分/15分 K线 -> 缠论分析 -> 信号规则。
+        股票没有"主力合约映射",所以不存在 trend/execution 双 code,
+        全部时间周期都用同一个 ts_code。
+        """
+        prefix = item.get("prefix") or ""
+        exchange = item.get("exchange") or ""
+        display_name = item.get("name") or prefix
+        if not prefix or not exchange:
+            logger.warning("[ScanService] 股票品种缺 prefix/exchange: %s", item)
+            return None
+
+        ts_code = f"{prefix}.{exchange}"
+
+        end_date = self._format_date(date.today())
+        start_date_1d = self._get_start_date("1d")
+        start_date_1w = self._get_start_date("1w")
+
+        try:
+            trend_daily_raw = self.tushare.get_stock_daily(
+                ts_code, start_date_1d, end_date)
+        except Exception as e:
+            logger.warning("[ScanService] %s 股票日线失败: %s", ts_code, e)
+            return None
+
+        if not trend_daily_raw or len(trend_daily_raw) < 30:
+            logger.warning("[ScanService] %s 股票日线数据不足", ts_code)
+            return None
+
+        trend_klines = self._transform_daily(trend_daily_raw)
+        trend_result = self._analyzer.analyze(trend_klines)
+
+        weekly_klines: list[dict] = []
+        h1_klines: list[dict] = []
+        m15_klines: list[dict] = []
+        weekly_result = None
+        structure_result = None
+        entry_result = None
+
+        try:
+            weekly_raw = self.tushare.get_stock_weekly(
+                ts_code, start_date_1w, end_date)
+            weekly_klines = self._transform_daily(weekly_raw) if weekly_raw else []
+            if weekly_klines and len(weekly_klines) >= 10:
+                weekly_result = self._analyzer.analyze(weekly_klines)
+        except Exception as e:
+            logger.warning("[ScanService] %s 股票周线失败: %s", ts_code, e)
+
+        try:
+            h1_start = self._get_start_date("1h")
+            h1_raw = self.tushare.get_stock_minutes(
+                ts_code, "60min", h1_start, end_date)
+            if h1_raw and len(h1_raw) >= 30:
+                h1_klines = self._transform_minute(h1_raw)
+                structure_result = self._analyzer.analyze(h1_klines)
+        except Exception as e:
+            logger.warning("[ScanService] %s 股票60分线失败: %s", ts_code, e)
+
+        try:
+            m15_start = self._get_start_date("15m")
+            m15_raw = self.tushare.get_stock_minutes(
+                ts_code, "15min", m15_start, end_date)
+            if m15_raw and len(m15_raw) >= 30:
+                m15_klines = self._transform_minute(m15_raw)
+                entry_result = self._analyzer.analyze(m15_klines)
+        except Exception as e:
+            logger.warning("[ScanService] %s 股票15分线失败: %s", ts_code, e)
+
+        signals = apply_signal_rules({
+            "prefix": prefix, "exchange": exchange, "displayName": display_name,
+            "trendCode": ts_code, "executionCode": ts_code,
+            "trendResult": trend_result, "structureResult": structure_result,
+            "entryResult": entry_result, "mappingDate": None,
+        }, {
+            "recentBars": options.get("recentBars", 5),
+            "requireFinished": options.get("requireFinished", True),
+            "requireTrendAlignment": options.get("requireTrendAlignment", False),
+            "includePartialTypes": options.get("includePartialTypes", False),
+        })
+
+        min_align = options.get("v14MinAlignScore", 25)
+        if min_align > 0:
+            signals = self._apply_v14_alignment(
+                signals, trend_result, structure_result, entry_result, min_align)
+
+        signals = self._keep_latest_per_direction(signals)
+
+        last_price = None
+        if entry_result and entry_result.get("mergedKlines"):
+            last_price = entry_result["mergedKlines"][-1].get("close")
+        elif trend_klines:
+            last_price = trend_klines[-1].get("close")
+
+        structural_context = _build_structural_context(
+            prefix, exchange, display_name, ts_code,
+            trend_result, structure_result, entry_result,
+        )
+
+        multi_period: dict = {"1d": {"result": trend_result}}
+        if weekly_result:
+            multi_period["1w"] = {"result": weekly_result}
+        if structure_result:
+            multi_period["1h"] = {"result": structure_result}
+        if entry_result:
+            multi_period["15m"] = {"result": entry_result}
+
+        return {
+            "prefix": prefix, "exchange": exchange, "displayName": display_name,
+            "trendCode": ts_code, "executionCode": ts_code,
+            "market": "stock",
+            "lastPrice": last_price,
+            "multiPeriod": multi_period,
+            "timeframeBars": {
+                "1d": trend_klines,
+                "1w": weekly_klines,
+                "1h": h1_klines,
+                "15m": m15_klines,
+            },
+            "structuralContext": structural_context,
+            "trend": {
+                "direction": trend_result["currentTrend"],
+                "movementType": trend_result["movementType"],
+                "hubCount": len(trend_result["hubs"]),
+                "biCount": len(trend_result["bis"]),
+                "signalCount": len(trend_result["buySellPoints"]),
+                "completeness": trend_result.get("completeness"),
+            },
+            "structure": {
+                "direction": structure_result["currentTrend"],
+                "movementType": structure_result["movementType"],
+                "hubCount": len(structure_result["hubs"]),
+                "biCount": len(structure_result["bis"]),
+                "signalCount": len(structure_result["buySellPoints"]),
+            } if structure_result else None,
+            "entry": {
+                "direction": entry_result["currentTrend"],
+                "movementType": entry_result["movementType"],
+                "hubCount": len(entry_result["hubs"]),
+                "biCount": len(entry_result["bis"]),
+                "signalCount": len(entry_result["buySellPoints"]),
+            } if entry_result else None,
+            "signals": signals,
+            "scannedAt": datetime.now().isoformat(),
+        }
 
     def _scan_variety(self, prefix: str, options: dict) -> dict | None:
         exchange = EXCHANGE_MAP.get(prefix)
@@ -305,6 +515,7 @@ class ScanService:
         return {
             "prefix": prefix, "exchange": exchange, "displayName": display_name,
             "trendCode": trend_code, "executionCode": execution_code,
+            "market": "futures",
             "lastPrice": last_price,
             "multiPeriod": multi_period,
             "timeframeBars": {

@@ -77,19 +77,66 @@ String asText(Object? value, [String defaultValue = '']) {
   return text.isEmpty ? defaultValue : text;
 }
 
+/// 市场类型 — 期货 vs A 股。
+/// 后端 ScanService 按这个字段分发到不同的扫描分支。
+enum MarketType {
+  futures,
+  stock;
+
+  String get id => name; // 'futures' / 'stock'
+  String get label => this == futures ? '期货' : 'A股';
+
+  static MarketType parse(String? value) {
+    if (value == null) return MarketType.futures;
+    final v = value.toLowerCase();
+    if (v == 'stock') return MarketType.stock;
+    return MarketType.futures;
+  }
+}
+
 class WatchItem {
   const WatchItem({
+    required this.market,
     required this.prefix,
     required this.exchange,
     required this.name,
   });
 
+  final MarketType market;
   final String prefix;
   final String exchange;
   final String name;
 
+  /// 唯一标识 — market 不同也算不同品种(同一个 prefix 在期货/股票里都可能存在)。
+  String get key => '${market.id}:$prefix.$exchange';
+
+  /// 给后端展示用的代码 — 期货是 "C.DCE",股票是 "600519.SH"。
+  String get displayCode => '$prefix.$exchange';
+
+  WatchItem copyWith({
+    MarketType? market,
+    String? prefix,
+    String? exchange,
+    String? name,
+  }) {
+    return WatchItem(
+      market: market ?? this.market,
+      prefix: prefix ?? this.prefix,
+      exchange: exchange ?? this.exchange,
+      name: name ?? this.name,
+    );
+  }
+
+  JsonMap toJson() => {
+        'market': market.id,
+        'prefix': prefix,
+        'exchange': exchange,
+        'name': name,
+      };
+
   factory WatchItem.fromJson(JsonMap json) {
     return WatchItem(
+      market: MarketType.parse(asText(json['market'], 'futures')),
       prefix: asText(json['prefix']),
       exchange: asText(json['exchange']),
       name: asText(json['name']),
@@ -420,6 +467,7 @@ class SignalItem {
 
 class ScanItem {
   const ScanItem({
+    required this.market,
     required this.prefix,
     required this.exchange,
     required this.displayName,
@@ -435,6 +483,7 @@ class ScanItem {
     required this.scannedAt,
   });
 
+  final MarketType market;
   final String prefix;
   final String exchange;
   final String displayName;
@@ -471,6 +520,7 @@ class ScanItem {
     }
 
     return ScanItem(
+      market: MarketType.parse(asText(json['market'], 'futures')),
       prefix: asText(json['prefix']),
       exchange: asText(json['exchange']),
       displayName: asText(json['displayName'], asText(json['prefix'])),

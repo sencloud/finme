@@ -36,9 +36,19 @@ class FinmeApi {
     return ScanPayload.fromJson(json);
   }
 
-  Future<ScanPayload> triggerScan() async {
-    final json =
-        await _post('/api/signals/scan', timeout: AppConfig.scanTimeout);
+  /// 触发一次后端扫描。
+  ///
+  /// [watchlist] 不为 null 时会序列化到 body,后端按这个列表扫描(支持 A 股 +
+  /// 自定义品种);为 null 则后端继续用 config.yaml 里的默认 watchlist。
+  Future<ScanPayload> triggerScan({List<WatchItem>? watchlist}) async {
+    final body = watchlist == null
+        ? null
+        : {'watchlist': watchlist.map((w) => w.toJson()).toList()};
+    final json = await _post(
+      '/api/signals/scan',
+      body: body,
+      timeout: AppConfig.scanTimeout,
+    );
     return ScanPayload.fromJson(json);
   }
 
@@ -49,9 +59,14 @@ class FinmeApi {
     return _decodeResponse(response);
   }
 
-  Future<JsonMap> _post(String path, {Duration? timeout}) async {
+  Future<JsonMap> _post(String path,
+      {Object? body, Duration? timeout}) async {
     final response = await http
-        .post(_resolve(path))
+        .post(
+          _resolve(path),
+          headers: body == null ? null : {'Content-Type': 'application/json'},
+          body: body == null ? null : jsonEncode(body),
+        )
         .timeout(timeout ?? AppConfig.requestTimeout);
     return _decodeResponse(response);
   }

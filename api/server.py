@@ -149,7 +149,12 @@ def _register_api_routes(app: FastAPI) -> None:
             return {"watchlist": []}
         return {
             "watchlist": [
-                {"prefix": w.prefix, "exchange": w.exchange, "name": w.name}
+                {
+                    "market": "futures",
+                    "prefix": w.prefix,
+                    "exchange": w.exchange,
+                    "name": w.name,
+                }
                 for w in cfg.watchlist
             ],
             "scan_interval_minutes": cfg.scan.interval_minutes,
